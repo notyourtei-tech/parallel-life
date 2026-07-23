@@ -20,13 +20,31 @@ const BranchTree = dynamic(
 
 type ViewMode = 'timeline' | 'tree';
 
-function isValid(t: unknown): t is LocalTimeline {
+// 校验单个世界对象：必须有标题，且 timeline 是非空数组，
+// 每个节点至少包含 number 类型的 age 与 string 类型的 title。
+// 否则 TimelineView 在访问 worldA.timeline.length / node.age 时会崩溃。
+function isValidTimelineWorld(w: unknown): boolean {
+  if (!w || typeof w !== 'object') return false;
+  const world = w as { title?: unknown; timeline?: unknown };
+  if (typeof world.title !== 'string' || !world.title) return false;
+  if (!Array.isArray(world.timeline) || world.timeline.length === 0) return false;
+  return world.timeline.every(
+    (n) =>
+      !!n &&
+      typeof n === 'object' &&
+      typeof (n as { age?: unknown }).age === 'number' &&
+      typeof (n as { title?: unknown }).title === 'string',
+  );
+}
+
+export function isValid(t: unknown): t is LocalTimeline {
   if (!t || typeof t !== 'object') return false;
   const tl = t as LocalTimeline;
   return Boolean(
-    tl.userInput?.keyDecision &&
-      tl.result?.worldA?.title &&
-      tl.result?.worldB?.title,
+    typeof tl.userInput?.keyDecision === 'string' &&
+      tl.userInput.keyDecision.length > 0 &&
+      isValidTimelineWorld(tl.result?.worldA) &&
+      isValidTimelineWorld(tl.result?.worldB),
   );
 }
 
