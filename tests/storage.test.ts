@@ -5,6 +5,7 @@ import {
   getTimelines,
   getTimelineById,
   deleteTimeline,
+  togglePinTimeline,
   clearTimelines,
 } from '@/lib/storage';
 import type { LocalTimeline, UserInput, TimelineResult } from '@/types';
@@ -97,5 +98,16 @@ describe('storage', () => {
     saveTimeline(makeTimeline('t2'));
     clearTimelines();
     expect(getTimelines()).toHaveLength(0);
+  });
+
+  it('togglePin 不修改已持有的引用（不可变更新）', () => {
+    saveTimeline(makeTimeline('t1'));
+    const before = getTimelineById('t1')!;
+    const beforePinned = before.pinned;
+    togglePinTimeline('t1');
+    // 旧引用不应被原地修改
+    expect(before.pinned).toBe(beforePinned);
+    // 重新获取应为切换后的值
+    expect(getTimelineById('t1')!.pinned).toBe(!beforePinned);
   });
 });

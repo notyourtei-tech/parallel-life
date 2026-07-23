@@ -104,4 +104,11 @@ describe('POST /api/generate', () => {
     const res = await POST(makeReq({ input: { ...validInput, country: '火星' }, type: 'timeline' }));
     expect(res.status).toBe(400);
   });
+
+  it('请求体超大时返回 413（流式读取上限）', async () => {
+    mockConfigured.mockReturnValue(true);
+    const huge = { input: validInput, type: 'timeline', extra: 'x'.repeat(20000) };
+    const res = await POST(makeReq(huge));
+    expect(res.status).toBe(413);
+  });
 });

@@ -90,8 +90,12 @@ export function togglePinTimeline(id: string): void {
     const timelines = readCache();
     const index = timelines.findIndex(t => t.id === id);
     if (index !== -1) {
-      timelines[index].pinned = !timelines[index].pinned;
-      writeCache(timelines);
+      // 用不可变更新生成新对象，避免直接修改 _cache 中共享的引用
+      // （readCache 返回的是浅拷贝数组，元素仍是 _cache 里的同一对象）。
+      const updated = timelines.map((t, i) =>
+        i === index ? { ...t, pinned: !t.pinned } : t,
+      );
+      writeCache(updated);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('parallel-life-update'));
       }

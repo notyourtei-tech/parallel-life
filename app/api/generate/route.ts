@@ -41,6 +41,28 @@ function sanitizeInput(value: unknown, maxLength: number): string {
   return value.slice(0, maxLength).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
 }
 
+// 有上限的流式读取请求体：分块读取并累加字节数，超过 maxBytes 立即取消并抛错，
+// 避免把超大 body 一次性读进内存（request.text() 的隐患）。
+async function readBodyCapped(req: NextRequest, maxBytes: number): Promise<string> {
+  const reader = req.body?.getReader();
+  if (!reader) return '';
+  const decoder = new TextDecoder();
+  let total = 0;
+  let result = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      reader.cancel().catch(() => {});
+      throw new Error('REQUEST_TOO_LARGE');
+    }
+    result += decoder.decode(value, { stream: true });
+  }
+  result += decoder.decode();
+  return result;
+}
+
 export async function POST(request: NextRequest) {
   if (!isConfigured()) {
     return NextResponse.json(
@@ -61,20 +83,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 先按 Content-Length 粗略拦截明显超大的请求体，避免为超大 body 分配内存。
+    const declaredLen = Number(request.headers.get('content-length'));
+    if (Number.isFinite(declaredLen) && declaredLen > INPUT_LIMITS.maxBodyBytes) {
+      return NextResponse.json({ error: '请求体过大' }, { status: 413 });
+    }
+
     let body: Record<string, unknown>;
     try {
-      const rawText = await request.text();
-      if (rawText.length > INPUT_LIMITS.maxBodyBytes) {
-        return NextResponse.json(
-          { error: '请求体过大' },
-          { status: 413 }
-        );
-      }
+      // 使用有上限的流式读取：超过 maxBodyBytes 立即中断并拒绝，
+      // 防止恶意超大请求体在内存中被完整缓冲（request.text() 的隐患）。
+      const rawText = await readBodyCapped(request, INPUT_LIMITS.maxBodyBytes);
       body = JSON.parse(rawText);
-    } catch {
+    } catch (err) {
+      const tooLarge = err instanceof Error && err.message === 'REQUEST_TOO_LARGE';
       return NextResponse.json(
-        { error: '请求体格式不正确' },
-        { status: 400 }
+        { error: tooLarge ? '请求体过大' : '请求体格式不正确' },
+        { status: tooLarge ? 413 : 400 },
       );
     }
 

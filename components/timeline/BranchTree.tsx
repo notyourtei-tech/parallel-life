@@ -16,10 +16,16 @@ export function BranchTree({ keyDecision, worldA, worldB }: BranchTreeProps) {
 
   // 预先计算每个节点坐标，并把横向漂移限制在画布内，避免节点越界或连线错位。
   // 漂移量随节点数自适应，保证最后一个节点仍落在安全边界内。
-  const driftA = maxLen > 1 ? Math.min(20, (150 - 60) / (maxLen - 1)) : 0;
-  const driftB = maxLen > 1 ? Math.min(20, (740 - 650) / (maxLen - 1)) : 0;
-  const aPos = worldA.timeline.map((node, i) => ({ node, x: 150 - i * driftA, y: 220 + i * 65 }));
-  const bPos = worldB.timeline.map((node, i) => ({ node, x: 650 + i * driftB, y: 220 + i * 65 }));
+  // 两条分支的横向起止坐标显式写出：A 从 150 漂移到 60，B 从 650 漂移到 740。
+  // 漂移量 = (终点 - 起点) / (节点数 - 1)，保证最后一个节点恰好落在安全边界内，且不再依赖魔数。
+  const A_START_X = 150;
+  const A_END_X = 60;
+  const B_START_X = 650;
+  const B_END_X = 740;
+  const driftA = maxLen > 1 ? (A_START_X - A_END_X) / (maxLen - 1) : 0;
+  const driftB = maxLen > 1 ? (B_END_X - B_START_X) / (maxLen - 1) : 0;
+  const aPos = worldA.timeline.map((node, i) => ({ node, x: A_START_X - i * driftA, y: 220 + i * 65 }));
+  const bPos = worldB.timeline.map((node, i) => ({ node, x: B_START_X + i * driftB, y: 220 + i * 65 }));
 
   return (
     <div className="max-w-6xl mx-auto">

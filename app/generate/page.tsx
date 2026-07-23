@@ -101,7 +101,12 @@ export default function GeneratePage() {
 
       const data = await response.json();
 
-      const timelineId = crypto.randomUUID();
+      // crypto.randomUUID 仅在安全上下文（https 或 localhost）可用；
+      // 非安全 http 部署下降级为基于时间与随机数的 id，避免提交时崩溃。
+      const timelineId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `tl-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const timelineData = {
         id: timelineId,
         createdAt: Date.now(),
