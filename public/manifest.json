@@ -1,0 +1,17 @@
+{
+  "name": "Parallel Life AI - 探索你的平行人生",
+  "short_name": "Parallel Life",
+  "description": "AI驱动的平行世界时间线生成器",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e27",
+  "theme_color": "#0a0e27",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

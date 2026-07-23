@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+*.log
+dev-*.log
 
 # debug
 npm-debug.log*
@@ -30,8 +32,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files —— 本地密钥，切勿提交到 GitHub
+.env
+.env*.local
+
+# 示例模板可安全提交（不含真实密钥）
+!.env.local.example
 
 # vercel
 .vercel
@@ -39,3 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 运行时产物（e2e 测试的 pid 文件，非源码）
+e2e-pid.txt
