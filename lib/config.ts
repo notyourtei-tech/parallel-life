@@ -25,6 +25,7 @@ export const INPUT_LIMITS = {
   minKeyDecision: 20,
   maxBodyBytes: 10_000,
   maxTimelineNodes: 10,
+  minTimelineNodes: 4,
 } as const;
 
 // ---- 业务常量 ----

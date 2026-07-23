@@ -168,6 +168,9 @@ export function validateTimeline(result: TimelineResult): void {
     if (!Array.isArray(world.timeline) || world.timeline.length === 0) {
       throw new Error('时间线节点不能为空');
     }
+    if (world.timeline.length < INPUT_LIMITS.minTimelineNodes) {
+      throw new Error(`时间线节点至少需要${INPUT_LIMITS.minTimelineNodes}个`);
+    }
     if (world.timeline.length > INPUT_LIMITS.maxTimelineNodes) {
       throw new Error(`时间线节点不能超过${INPUT_LIMITS.maxTimelineNodes}个`);
     }

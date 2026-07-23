@@ -10,15 +10,15 @@ import {
 import type { TimelineResult, UserInput } from '@/types';
 
 function makeTimeline(overrides: Partial<TimelineResult> = {}): TimelineResult {
-  const node = {
-    age: 25,
+  const node = (age: number) => ({
+    age,
     year: 2024,
     event: '做了决定',
     description: '描述',
     emotion: 'successful' as const,
     milestone: '成就',
-  };
-  const world = { title: '路线', timeline: [node] };
+  });
+  const world = { title: '路线', timeline: [node(25), node(30), node(35), node(40)] };
   return {
     worldA: overrides.worldA ?? world,
     worldB: overrides.worldB ?? { ...world, title: '另一条' },
@@ -133,6 +133,12 @@ describe('validateTimeline', () => {
     const base = bad.worldA.timeline[0];
     bad.worldA.timeline = Array.from({ length: 11 }, () => ({ ...base }));
     expect(() => validateTimeline(bad)).toThrow('时间线节点不能超过');
+  });
+
+  it('节点数少于下限抛错', () => {
+    const bad = makeTimeline();
+    bad.worldA.timeline = bad.worldA.timeline.slice(0, 2); // 2 < 4
+    expect(() => validateTimeline(bad)).toThrow('时间线节点至少需要');
   });
 });
 

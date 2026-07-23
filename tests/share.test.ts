@@ -3,16 +3,45 @@ import { encodeTimeline, decodeTimeline, isShareUrlTooLong } from '@/lib/share';
 import { SHARE_URL_MAX_SAFE } from '@/lib/config';
 
 describe('encodeTimeline / decodeTimeline', () => {
-  it('往返编解码保持数据一致', () => {
-    const data = { id: 'x', title: '路线A', nodes: [{ age: 25, event: '决定' }] };
-    const encoded = encodeTimeline(data);
-    expect(typeof encoded).toBe('string');
-    expect(decodeTimeline(encoded)).toEqual(data);
+  // 构造一个最小可用的 LocalTimeline（仅用于编解码往返测试）
+  const sampleTimeline = {
+    id: 'secret-internal-id',
+    createdAt: 123456,
+    userInput: {
+      age: 28,
+      gender: '男',
+      country: '中国',
+      occupation: '工程师',
+      status: '稳定',
+      keyDecision: '如果当年去了深圳创业而不是留在大厂',
+    },
+    result: {
+      worldA: {
+        title: '路线A',
+        timeline: [{ age: 25, year: 2024, event: 'e', description: 'd', emotion: 'neutral', milestone: 'm' }],
+      },
+      worldB: {
+        title: '路线B',
+        timeline: [{ age: 40, year: 2039, event: 'e2', description: 'd2', emotion: 'regretful', milestone: 'm2' }],
+      },
+    },
+  } as const;
+
+  it('只编码 userInput 与 result，丢弃内部 id/createdAt', () => {
+    const decoded = decodeTimeline(encodeTimeline(sampleTimeline as never))!;
+    expect(decoded.id).toBe('shared');
+    expect(decoded.createdAt).toBe(0);
+    expect(decoded.userInput).toEqual(sampleTimeline.userInput);
+    expect(decoded.result).toEqual(sampleTimeline.result);
   });
 
   it('正确处理中文/表情等多字节字符', () => {
-    const data = { text: '如果当年去了深圳创业🚀，人生会不同吗？' };
-    expect(decodeTimeline(encodeTimeline(data))).toEqual(data);
+    const tl = {
+      ...sampleTimeline,
+      userInput: { ...sampleTimeline.userInput, keyDecision: '如果当年去了深圳创业🚀，人生会不同吗？' },
+    } as const;
+    const decoded = decodeTimeline(encodeTimeline(tl as never))!;
+    expect(decoded.userInput.keyDecision).toBe('如果当年去了深圳创业🚀，人生会不同吗？');
   });
 
   it('损坏的 base64 返回 null 而不抛错', () => {
@@ -29,8 +58,36 @@ describe('encodeTimeline / decodeTimeline', () => {
   });
 
   it('超长内容仍可正确往返', () => {
-    const data = { story: '很长的故事。'.repeat(5000) };
-    expect(decodeTimeline(encodeTimeline(data))).toEqual(data);
+    const tl = {
+      ...sampleTimeline,
+      userInput: { ...sampleTimeline.userInput, keyDecision: '如果'.repeat(5000) },
+      result: {
+        worldA: { title: 'A', timeline: [{ age: 25, year: 2024, event: 'e', description: '很长的故事。'.repeat(5000), emotion: 'neutral', milestone: 'm' }] },
+        worldB: { title: 'B', timeline: [{ age: 40, year: 2039, event: 'e2', description: 'd2', emotion: 'regretful', milestone: 'm2' }] },
+      },
+    } as const;
+    const decoded = decodeTimeline(encodeTimeline(tl as never))!;
+    expect(decoded.userInput).toEqual(tl.userInput);
+    expect(decoded.result).toEqual(tl.result);
+  });
+
+  it('旧版完整对象编码的链接仍可解码（忽略多余字段）', () => {
+    const full = {
+      id: 'old',
+      createdAt: 1,
+      processingTime: 500,
+      userInput: sampleTimeline.userInput,
+      result: sampleTimeline.result,
+    };
+    // 模拟旧版编码器：把整个 LocalTimeline 写进链接
+    const bytes = new TextEncoder().encode(JSON.stringify(full));
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    const legacy = btoa(bin);
+    const decoded = decodeTimeline(legacy)!;
+    expect(decoded.userInput).toEqual(full.userInput);
+    expect(decoded.result).toEqual(full.result);
+    expect(decoded.id).toBe('shared');
   });
 });
 
